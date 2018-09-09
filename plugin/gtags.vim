@@ -1,7 +1,8 @@
 " File: gtags.vim
 " Author: Tama Communications Corporation
-" Version: 0.6.8
-" Last Modified: Nov 9, 2015
+" Modified by: Jing
+" Version: 0.7 (based on 0.6.8)
+" Last Modified: Sept 9, 2018
 "
 " Copyright and license
 " ---------------------
@@ -379,8 +380,14 @@ endfunction
 "
 " Execute global and load the result into quickfix window.
 "
-function! s:ExecLoad(option, long_option, pattern, flags)
+function! s:ExecLoad(option, long_option, pattern, flags, ...)
     " Execute global(1) command and write the result to a temporary file.
+    if a:0 > 0
+        let jump=a:1
+    else
+        let jump=0
+    endif
+
     let l:isfile = 0
     let l:option = ''
     let l:result = ''
@@ -433,12 +440,15 @@ function! s:ExecLoad(option, long_option, pattern, flags)
     if g:Gtags_OpenQuickfixWindow == 1
 	let l:open = 1
         if g:Gtags_Close_When_Single == 1
-	    let l:open = 0
-	    let l:idx = stridx(l:result, "\n")
-	    if l:idx > 0 && stridx(l:result, "\n", l:idx + 1) > 0
-		let l:open = 1
-	    endif
-	endif
+           let l:open = 0
+           let l:idx = stridx(l:result, "\n")
+           if l:idx > 0 && stridx(l:result, "\n", l:idx + 1) > 0
+           let l:open = 1
+           endif
+        endif
+        if jump == 0
+            let l:open = 1
+        endif
 	if l:open == 0
 	    cclose
         elseif g:Gtags_VerticalWindow == 1
@@ -455,6 +465,9 @@ function! s:ExecLoad(option, long_option, pattern, flags)
     elseif g:Gtags_No_Auto_Jump == 1
         cgete l:result		" does not jump
     else
+        cexpr! l:result		" jump
+    endif
+    if jump == 1
         cexpr! l:result		" jump
     endif
     let &efm = l:efm_org
@@ -498,6 +511,11 @@ function! s:GtagsCursor()
     call s:ExecLoad('', l:option, l:pattern, '')
 endfunction
 
+function! s:GtagsCursorAndJump()
+    let l:pattern = expand("<cword>")
+    let l:option = "--from-here=\"" . line('.') . ":" . expand("%") . "\""
+    call s:ExecLoad('', l:option, l:pattern, '', 1) " 1 means jump
+endfunction
 "
 " Show the current position on mozilla.
 " (You need to execute htags(1) in your source directory.)
@@ -545,6 +563,7 @@ endfunction
 command! -nargs=* -complete=custom,GtagsCandidate Gtags call s:RunGlobal(<q-args>, '')
 command! -nargs=* -complete=custom,GtagsCandidate Gtagsa call s:RunGlobal(<q-args>, 'a')
 command! -nargs=0 GtagsCursor call s:GtagsCursor()
+command! -nargs=0 GtagsCursorAndJump call s:GtagsCursorAndJump()
 command! -nargs=0 Gozilla call s:Gozilla()
 command! -nargs=0 GtagsUpdate call s:GtagsAutoUpdate()
 if g:Gtags_Auto_Update == 1
